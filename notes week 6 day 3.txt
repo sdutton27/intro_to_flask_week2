@@ -14,3 +14,24 @@ Make an account for render
 Render -> New -> Web service -> login to Github
 
 link Only select repositories
+
+Connect a repo 
+
+Specific, unique name - intro_to_flask_padawans_simon
+Branch main (default)
+Don't need to add root directory (default)
+Runtime Python 3 (default)
+
+build command: $ pip install -r requirements.txt (default)
+
+start command: $ gunicorn app:app (default)
+                        <name of module>:<name of instance,  this is defined in the __init__ for the program>
+
+Create Web Service 
+
+In requirements.txt
+python-dotenv -> we should remove the version so mac/pc can all use 
+
+re-upload to github 
+
+hit manual deploy -> deploy the latest commit

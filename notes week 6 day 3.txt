@@ -36,3 +36,4 @@ re-upload to github
 
 hit manual deploy -> deploy the latest commit
 
+in .env you can put PYTHON_VERSION = 3.10.7 -> if you need a later pyton

@@ -37,3 +37,10 @@ re-upload to github
 hit manual deploy -> deploy the latest commit
 
 in .env you can put PYTHON_VERSION = 3.10.7 -> if you need a later pyton
+
+on right side of render: Environment 
+    add Environment variables
+
+    SECRET_KEY = 1234
+    DATABASE_URL = {copy this}
+    NEWS_API_KEY = {copy this}

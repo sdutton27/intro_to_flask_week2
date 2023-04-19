@@ -35,3 +35,4 @@ python-dotenv -> we should remove the version so mac/pc can all use
 re-upload to github 
 
 hit manual deploy -> deploy the latest commit
+

@@ -1,0 +1,267 @@
+EDITS TO PREXISTING CLASSES:
+===============================
+ROUTES.PY
+
+    from flask import flash, get_flashed_messages
+        # flash: you can add categories if things are good or bad flashes 
+        # list of tuples ("string-you-want", "success"/"danger")
+
+    @app.route('/posts/<int:post_id>')
+    # we need post_id as a keyword argument to pass in in route ^
+    def showPost(post_id):
+        post = Post.query.get(post_id) # only works for primary keys
+        if post:
+            return render_template('singlepost.html', post = post) 
+        else:
+            redirect(url_for("show_all_posts))
+
+    @app.route('/posts/delete/<int:post_id>')
+    @login_required # you must be logged in to delete
+    def deletePost(post_id):
+        # find this post
+        post = Post.query.get(post_id)
+        if post:
+            # make sure you are the author
+            if post.user_id == current_user.id:
+                post.deleteFromDB()
+            else:
+                print('You cannot delete another user's post')
+        else:
+            print('the post you are trying to delete does not exist')
+        return redirect(url_for('showAllPosts'))
+
+    @app.route('/posts/update/<int:post_id>', methods = ['GET','POST'])
+@login_required # you must be logged in to delete
+def updatePost(post_id):
+    # find this post
+    post = Post.query.get(post_id)
+    if post:
+        # make sure you are the author
+        if post.user_id == current_user.id:
+            form = PostForm()
+            if request.method == 'POST':
+                if form.validate():
+                    title = form.title.data
+                    img_url = form.img_url.data
+                    caption = form.caption.data
+                    # update the post!
+                    post.title = title
+                    post.img_url = img_url
+                    post.caption = caption
+                    # we should have a last_updated timestemp but we didn't implement this lol
+                    # we don't need to add to session just commit
+                    post.save_changes_to_db()
+
+                    flash('Successfully updated your post', 'success')
+
+                    return redirect(url_for('showPost', post_id = post.id))
+
+            return render_template('updatepost.html', form = form, post = post)
+        else:
+            flash('you cannot update anther user's post', 'danger')
+    else:
+        flash('the post you are trying to update does not exist', 'danger')
+    return redirect(url_for('showAllPosts'))
+
+    #EDIT METHOD (to put in flash):
+    @app.route('/signup', methods=["GET", "POST"])
+    def signupPage():
+        # instantiate the form
+        form = SignUpForm()
+        # if the method is POST, do something
+        #print(request.method)
+        if request.method == 'POST':
+            #print('valid post request made')
+            if form.validate(): # if the form is valid, this is True
+                username = form.username.data
+                email = form.email.data
+                password = form.password.data
+                
+                user = User.query.filter_by(username = username).first()
+                if user:
+                    flash('That username is taken', 'danger')
+                    return render_template('signup.html', form = form)
+                user = User.query.filter_by(email = email).first()
+                if user:
+                    flash('That email is already in user. Please use another email', 'danger')
+                    return render_template('signup.html', form = form)
+
+                user = User(username, email, password)
+                #print(user)
+                user.save_to_db() # helper method
+
+                flash('Successfully created your account', 'success')
+
+                return redirect(url_for('loginPage'))
+
+            else:
+                flash('Invalid entry, please try again', 'danger')
+
+        # if the method is GET
+        return render_template('signup.html', form = form)
+
+================================
+MODELS.PY
+
+    def delete_from_db(self):
+        db.session.delete(self)
+        db.session.commit() #whatever to commit changes
+
+    def save_changes_to_db(self):
+        db.session.commit()
+
+=================================
+POSTS.HTML
+    change the outer div to be an <a> tag
+
+    {% extends 'base.html' %}
+
+    {% block content %}
+    <div class="d-flex flex-column justify-content-center">
+        <h1>All Posts</h1>
+        {% for p in posts %}                                                    # pass along the respective ID to this function
+            <a class="card text-decoration-none text-dark" style="width: 18rem;" href="{{ url_for('showPost', post_id=p.id) }}">
+                <img class="card-img-top" src="{{ p.img_url }}" alt="Card image cap">
+                <div class="card-body">
+                    <h5 class="card-title">{{ p.title }} - {{ p.author.username }}</h5>
+                    <p class="card-text">{{ p.caption }}</p>
+                </div>
+            </a>
+        {% endfor %}
+    </div>
+    {% endblock %}
+===============================
+BASE.HTML 
+    move entire block content into
+    <div class='container'>
+
+    <div class="container">
+        {% include 'nav.html' %}
+        <!--Handles Flash messages consistently-->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} col-4 alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}
+        {% endblock %}
+    
+        <footer>my footer</footer>
+    </div>
+
+NEW CLASSES:
+================================
+SINGLEPOST.HTML - looks very similar to posts.html just for single post
+
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Single Post</h1>
+{% if post %}
+    <div class="card" style="width: 18rem;">
+        <img class="card-img-top" src="{{ post.img_url }}" alt="Card image cap">
+        <div class="card-body">
+        <h5 class="card-title">{{ post.title }} - {{ post.author.username }}</h5>
+        <p class="card-text">{{ post.caption }}</p>
+        </div>
+    </div>
+
+    {% if current_user.is_authenticated %}
+        {% if post.user_id == current_user.id %} 
+
+            <a href="{{ url_for('updatePost', post_id=post.id) }}" class="button btn btn-primary">Update</a>
+            <!-- Button trigger modal -->
+            <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#exampleModal">
+            Delete Post
+            </button>
+
+            <!-- Modal -->
+            <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h1 class="modal-title fs-5" id="exampleModalLabel">Delete Post</h1>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            Are you sure you would like to delete this post? Once you have deleted a post, you cannot undo this action.
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <a type="button" class="btn btn-warning" href="{{ url_for('deletePost', post_id = post.id)}}">Delete</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        {% endif %}
+    {% endif %}
+
+    {% else %}
+        <h2>There is no post with that id</h2> # this is one option
+    {% endif %}
+{% endblock %}
+=============================
+UPDATEPOST.HTML -- looks the same as createpost.html
+
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Update Your Post</h1>
+  <form method="POST">
+    {{ form.hidden_tag() }}
+
+    {{form.title(class='form-control', placeholder='Title', value=post.title)}}
+    {{form.img_url(class='form-control', placeholder='Image URL', value=post.img_url)}}
+    {{form.caption(class='form-control', placeholder='Caption', value=post.caption)}}
+    {{form.submit(class='btn btn-primary')}}
+  </form>
+
+
+{% endblock %}
+
+======================================
+
+BLUEPRINTS:
+
+- this is not absolutely necessary
+- The idea is to separate the forms/models/routes.py so they are not as big and crowded
+- might put signup/login/logout in authentication section
+- showpost, showallposts, deletepost, updatepost, and create post in another section
+
+Create a folder inside app -> name it whatever 
+    auth/ for authorization section
+        make a file named forms/routes.py in auth/ (we could do models too but we dont really need to)
+        cut/paste login/signup form into forms, bring in imports
+        cut/paste signupPage, loginPage, logMeOut into routes, bring in imports
+        delete the unnecessary imports from the templates/files too
+
+        auth_templates/ create folder inside auth
+        cut/paste login/signup.html and put in auth/templates
+
+        copy everything, delete everything that's been greyed out
+         edit from ..models instead of .models to access it 
+
+        in auth/routes.py
+        COMMENT OUT #from app import app
+        
+        from flask import Blueprint
+        # underneath the imports
+        auth = Blueprint('auth', __name__, template_folder='auth_templates')
+
+        instead of @app.route, @auth.route
+        change all of the routes to auth.login_page or auth.signup_page (you don't need to change homepage or things in the main app blueprint)
+
+        in __init__.py 
+        from .auth.routes import auth 
+
+        # register your blueprints (after loginmanager)
+        # also, change loginmanager from loginPage to 'auth.loginPage'
+
+        app.register_blueprint(auth)

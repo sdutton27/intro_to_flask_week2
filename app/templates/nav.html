@@ -1,0 +1,36 @@
+
+<nav class="navbar">
+<ul class="nav justify-content-end">
+  <a class="navbar-brand" href="/">Finstagram</a>
+  <li class="nav-item">
+    <a class="nav-link active" aria-current="page" href="/">Home</a>
+  </li>
+  {% if current_user.is_authenticated %}
+    <li class="nav-item">
+      <a class="nav-link" href="/posts">Feed</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="/news">News</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="/posts/create">Create A Post</a>
+    </li>
+    <li class="nav-item">
+      <p class="nav-link">Hello, {{ current_user.username }}</p>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="/logout">Log Out</a>
+    </li>
+  {% else %}
+    <li class="nav-item">
+      <a class="nav-link active">Hello Guest</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="/login">Log In</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="/signup">Sign Up</a>
+    </li>
+  {% endif %}
+</ul>
+</nav>

@@ -1,0 +1,16 @@
+Heroku is no longer Free...
+We also have something called Glitch
+So we are going to use Render instead to host our projects
+
+You are going to hand off your code to someone else so the requirements.txt needs to be correct to build the virtual environment for everyone
+
+Python web-server gateway interface
+
+    pip3 install gunicorn
+    pip3 freeze > requirements.txt
+
+Make an account for render
+
+Render -> New -> Web service -> login to Github
+
+link Only select repositories

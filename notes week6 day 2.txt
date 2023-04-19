@@ -1,0 +1,298 @@
+NewsAPI.org
+API key: 48f442658b5242679daf1cdd94342dff
+
+Query Parameter:
+    - starts with?<keyword>=<value>&<parameters>
+    google.com/search?hello=bye&user_id=1
+
+in newsAPI we have to put in API as parameter
+
+GET the link
+    https://newsapi.org/v2/top-headlines?country=us&apiKey=API_KEY
+                                                            ^ put in our API key
+
+also any key words to search for 
+    google.com/search?q=Pokemon (q is query)
+
+pokeapi.co/api/v2/pokemon?limit=30
+
+LINE 13 IN BASE.html
+{{moment.include_moment()}}
+rest in init
+
+
+in routes: 
+
+@app.route('/news')
+def newsPage():
+    # note at end of this we add the pageSize=20
+    url = f'https://newsapi.org/v2/everything?q=tesla&from=2023-03-18&sortBy=publishedAt&apiKey={NEWS_API_KEY}&pageSize=20'
+    response = r.get(url)
+    data = response.json()
+    articles = []
+    # in the JSON it says that status should be 'ok', written in the JSON file
+    if data['status'] == 'ok':
+        articles = data['articles']
+    return render_template('news.html', articles=articles)
+
+put the API key as a vairable in the .env file so it is secret
+
+in the news.html
+
+{% for a in articles %}
+<div class="card" style="width: 18rem;">
+    <img src="{{a.urlToImage}}" class="card-img-top" alt="...">
+    <div class="card-body">
+      <h5 class="card-title">{{a['title']}}</h5>
+      <p class="card-text">{{a.description}}</p>
+      <a href="{{a.url}}" class="btn btn-primary">To to the article</a>
+    </div>
+  </div>
+{% endfor %}
+
+7:40PM we can also make this open in a new tab
+
+
+Make folder in app api/
+    make __init__.py
+        auth_routes.py
+        ig_routes.py
+        shop_routes.py 
+
+in api/__init__.py
+from flask import Blueprint
+
+
+# we need to specify url prefix
+# like in PokeAPI everything will be pokeapi.co/api/v2/<EVERYTHING ELSE GOES HERE>
+# we don't want these prefixes every time
+
+api = Blueprint('api', __name__, url_prefix='/api') # we don't need to specify template folder
+
+# eventually they will all be connected to this api
+from . import auth_routes, ig_routes, shop_routes
+
+
+in main __init__.py
+from .api import api #coming from the init file , so just api
+app.register_blueprint(api)
+
+in ig_routes.py
+
+
+A Python object does not translate well across languages, so giving an object to
+a site is not standardized.
+JSON is all dictionaries of key,val pairs
+We need to translate Post to a key,val pair
+
+in models.py, Post
+
+def to_dict(self):
+        return {
+            'id' : self.id,
+            'title' : self.title,
+            'caption' : self.caption,
+            'img_url' : self.img_url,
+            'author' : self.author.username, # we have this backref
+            'likes' : len(self.likers), # how many people have liked a post
+            'date_created' : self.date_created,
+        }
+
+in ig_routes.py
+
+update the getPostAPI()
+    return {
+        'status' : 'ok',
+        'results' : len(posts),
+        'posts' : [p.to_dict() for p in posts] # for every post in posts, let's create a dictionary for it
+    }
+
+WHEN REACT TALKS TO FLASK WE CAN GET OUR INFORMATION
+
+Flask is a RESTful API - it exists and is a bunch of endpoints waiting to be hit
+Reach is going to be our new frontend -> "someone wants to see their feed"
+
+in ig_routes.py
+from flask import abort
+
+@api.get('/posts/<int:post_id>')
+# this will only ever be GET so we don't need methods="GET"
+def getPostAPI(post_id):
+    post = Post.query.get(post_id)
+    # return something to the user if the page doesn't exist
+    if post:
+        return {
+            'status' : 'ok',
+            'results' : 1,
+            'posts' : post.to_dict() # for every post in posts, let's create a dictionary for it
+        }
+    else:
+        #abort(404)
+        # or we could just give them a result, but a non result
+        return {
+            'status' : 'not ok',
+            'message' : 'The post you are looking for does not exist'
+        }
+
+in auth_routes.py
+
+from . import api
+from ..models import User
+from flask import request
+
+@api.post('/signup')
+def signUpAPI():
+    # when you are creating an API that expects a POST, you should make a doctype
+    """
+        WHAT DOES THE EXPECTED REQUEST BODY LOOK LIKE
+    """
+    # we are just gonna assume they gave us the right info
+    data = request.json
+            # the same request as if request.method == 'POST'
+    
+    # this is a lot like getting info from a form
+    # username = form.username.data
+    
+    username = data['username']
+    email = data['email']
+    password = data['password']
+
+    # THIS IS A LOT LIKE THE signUp From auth/routes.py
+    
+    user = User.query.filter_by(username=username).first()
+    if user:
+        return {
+            'status' : 'not ok',
+            'message' : 'That username is taken. Please choose a different username.'
+        }
+    
+    user = User.query.filter_by(email=email).first()
+    if user:
+        return {
+            'status' : 'not ok',
+            'message' : 'That email is already in use. Please choose a different email.'
+        }
+    
+    user = User(username, email, password)
+    
+    user.saveToDB()
+
+    return {
+        'status' : 'ok',
+        'message' : 'you have successfully created an account'
+    }
+
+
+You can also send a Header instead of an API key
+
+
+postman.com - third party to add to API
+create NEW -> HTTP request
+
+POST http://<localhost>/api/signup 
+go to Body tab -> raw -> JSON
+    type there:
+
+    {
+        "username" : "mike_wazowski111",
+        "email" : "mike@mike.com",
+        "password" : "1234"
+    }
+
+Headers tab (click eye for hidden):
+    will add content-type
+    content-type should say application/json
+
+When we move into React, we will delete all of these templates because the backend is what is held in Flask
+Makes it a lot easier to test things this way
+
+models.py 
+from werkzeug.security import generate_password_hash
+
+in init method for user
+    self.password = generate_password_hash(password)
+
+SERVER NEEDS TO BE UP 
+
+in auth/routes.py
+
+from werkzeug.security import check_password_hash
+
+instead of if password == password
+
+if check_password_hash(user.password, password):
+
+edit all the other passwords
+
+flask shell 
+>>> from werkzeug.security import check_password_hash 
+>>> from werkzeug.security import generate_password_hash as gen
+
+users = User.query.all()
+
+for u in users:
+    if u.password == '1234':
+        u.password.gen('1234')
+
+db.session.commit()
+
+
+A server doesn't need to have a front end! But it can still have endpoints that work
+
+There is a better way to handle templates than Jinja/Flask 
+That way you don't have to refresh the entire page 
+JavaScript can inject info without reloading the whole page
+If your page isn't that complex, something easy, Jinja is more than enough.
+IE. The coding temple homepage is all pretty static
+
+=============================
+For Homework:
+Due Thursday
+Thursday -- we have 3 ongoing parttime classes in CT, we are 1 of 3.
+On Thursday they will have their final project presentations
+The other class is 2 weeks ahead of us, on week 10 we will watch them
+On our week 10 they will watch us
+We will watch them present on Thursday
+
+Final Project:
+We are required to make a working project lol 
+    React and Flask 
+
+We can already start it if we want lol what kinda time 
+
+Express -> JavaScript instead of Python -> Flask 
+SQLite is not as good as PostgreSQL so dont do it lol
+Firebase = No SQL database - just stores dicts in the cloud, we will cover towards the end
+
+TypeScript = same as JavaScript but you just have to specify the type of your variables
+
+CRUD: Create Retrieve Update and Delete - how applications make an impact
+
+Bootstrap looks Cheap if you use it in your final project -- don't use it!
+Use icons instead of words
+
+Work on your core functionality first and then work on your routes 
+First impressions matter!
+
+Shoha's final project (as an example):
+
+Mobile approach for Spotify
+- he made it responsive for different window sizes
+- you had to login with your own spotify
+
+Goal: streamline your search for music
+Tinder for music. Swipe left/swipre right for artists if you like them or not
+seen = {ids for musicians you've seen}, dont want people coming up ago
+liked = queue, if you like an artist, it's FIFO. The next 20 artists you search will be related to the artist you like
+
+Select a genre:
+    hip hop -> takes you to a page, pulls in a list of artists. artists have their name show up, their image, a preview song
+
+
+Current genre: toggle buttons
+    on swipe right, add preview song to playlist, add preview song to favorite, follow artist page  
+    actually interacts with your real spotify account 
+
+You can actually swipe things with Javascript 
+
+Profile pages to give you info for an artist 
